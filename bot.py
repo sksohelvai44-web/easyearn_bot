@@ -12,7 +12,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 TOKEN = os.environ.get("BOT_TOKEN")
-ADMIN_IDS = [7816083990]
+ADMIN_IDS = [7816083990]  # 👈 আপনার আইডি
 
 if not TOKEN:
     logger.error("BOT_TOKEN not set!")
@@ -253,9 +253,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         db.create_user(user.id, user.username or "NoUsername", user.first_name or "User")
         db_user = db.get_user(user.id)
     
-    is_admin = db_user[10] == 1
-    
-    if is_admin:
+    # Check if user is admin
+    if db_user[10] == 1:
         await update.message.reply_text("👋 Welcome Admin!", reply_markup=admin_menu)
     else:
         await update.message.reply_text("👋 Welcome!\nUse the buttons below:", reply_markup=main_menu)
@@ -273,7 +272,9 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     is_admin = db_user[10] == 1
     
-    # CANCEL
+    # ============================================
+    # 1️⃣ CANCEL
+    # ============================================
     if text == "❌ Cancel":
         user_states.pop(user_id, None)
         withdraw_states.pop(user_id, None)
@@ -283,13 +284,17 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("❌ Cancelled!", reply_markup=main_menu)
         return
     
-    # ADMIN
+    # ============================================
+    # 2️⃣ ADMIN PANEL (এডমিন দেখতে পারে)
+    # ============================================
     if is_admin:
         if text == "👥 All Users":
             users = db.get_all_users()
             msg = "👥 All Users:\n\n"
             for u in users[:30]:
                 msg += f"🆔 {u[1]} | @{u[2] or 'N/A'} | Balance: {u[3]:.2f} BDT\n"
+            if len(users) > 30:
+                msg += f"\n... and {len(users)-30} more"
             await update.message.reply_text(msg, reply_markup=admin_menu)
             return
         
@@ -299,6 +304,8 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 msg = "📋 All Tasks:\n\n"
                 for t in tasks[:20]:
                     msg += f"ID: {t[0]} | User: @{t[9]} | Status: {t[6]} | Reward: {t[7]:.2f} BDT\n"
+                if len(tasks) > 20:
+                    msg += f"\n... and {len(tasks)-20} more"
                 await update.message.reply_text(msg, reply_markup=admin_menu)
             else:
                 await update.message.reply_text("No tasks found.", reply_markup=admin_menu)
@@ -330,11 +337,16 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
     
-    # MAIN MENU
+    # ============================================
+    # 3️⃣ MAIN MENU (সবার জন্য)
+    # ============================================
+    
+    # TASK
     if text == "📋 Task":
         await update.message.reply_text("📋 Select Task:", reply_markup=task_menu)
         return
     
+    # BALANCE
     if text == "💰 Balance":
         await update.message.reply_text(
             f"💰 Your Balance\n\nTotal: {db_user[3]:.2f} BDT\nEarned: {db_user[4]:.2f} BDT",
@@ -342,6 +354,7 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
     
+    # WITHDRAW
     if text == "💳 Withdraw":
         if db_user[3] < 50:
             await update.message.reply_text(f"❌ Min 50 BDT.\nYour Balance: {db_user[3]:.2f} BDT", reply_markup=main_menu)
@@ -349,6 +362,7 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("💳 Select method:", reply_markup=withdraw_menu)
         return
     
+    # PROFILE
     if text == "👤 Profile":
         await update.message.reply_text(
             f"👤 Your Profile\n\nID: {user_id}\nUsername: @{db_user[1] or 'N/A'}\nBalance: {db_user[3]:.2f} BDT",
@@ -356,6 +370,7 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
     
+    # REFER
     if text == "🔗 Refer":
         await update.message.reply_text(
             f"🔗 Referral Program\n\nEarn 10% commission!\n\nYour link:\nhttps://t.me/easyearnultimate_bot?start=ref_{db_user[6]}\n\nCommission: {db_user[8]:.2f} BDT",
@@ -363,11 +378,16 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
     
+    # LANGUAGE
     if text == "🌐 Language":
         await update.message.reply_text("🌐 Select Language:", reply_markup=language_menu)
         return
     
-    # TASK
+    # ============================================
+    # 4️⃣ TASK MENU
+    # ============================================
+    
+    # INSTA 2FA
     if text == "📱 Insta 2FA 4 BDT":
         user_states[user_id] = {'task': 'instagram'}
         await update.message.reply_text(
@@ -376,11 +396,16 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
     
+    # FACEBOOK
     if text == "📘 Facebook":
         await update.message.reply_text("📘 Coming soon!", reply_markup=task_menu)
         return
     
-    # INSTAGRAM
+    # ============================================
+    # 5️⃣ INSTAGRAM FLOW
+    # ============================================
+    
+    # START
     if text == "✅ Start" and user_id in user_states and user_states[user_id].get('task') == 'instagram':
         username, password = generate_credentials()
         task_id = db.create_instagram_task(db_user[0], username, password)
@@ -392,10 +417,12 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
     
+    # VIDEO
     if text == "🎥 Video" and user_id in user_states and user_states[user_id].get('task') == 'instagram':
         await update.message.reply_text("🎥 Video link here", reply_markup=insta_menu)
         return
     
+    # SET 2FA
     if text == "🔐 Set 2FA":
         if user_id in user_states and user_states[user_id].get('step') == 'credentials':
             user_states[user_id]['step'] = 'waiting'
@@ -404,6 +431,7 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("No active task", reply_markup=main_menu)
         return
     
+    # HANDLE 2FA KEY
     if user_id in user_states and user_states[user_id].get('step') == 'waiting':
         key = text.strip().upper()
         code = generate_authenticator_code(key)
@@ -416,6 +444,7 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("Invalid Key!", reply_markup=cancel_menu)
         return
     
+    # DONE
     if text == "✅ Done":
         if user_id in user_states and user_states[user_id].get('step') == 'done':
             task_id = user_states[user_id]['task_id']
@@ -427,17 +456,23 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("No active task", reply_markup=main_menu)
         return
     
-    # WITHDRAW
+    # ============================================
+    # 6️⃣ WITHDRAW
+    # ============================================
+    
+    # BKASH
     if text == "📱 Bkash":
         withdraw_states[user_id] = {'method': 'Bkash', 'step': 'number'}
         await update.message.reply_text("Enter Bkash number:", reply_markup=cancel_menu)
         return
     
+    # NAGAD
     if text == "📱 Nagad":
         withdraw_states[user_id] = {'method': 'Nagad', 'step': 'number'}
         await update.message.reply_text("Enter Nagad number:", reply_markup=cancel_menu)
         return
     
+    # HANDLE NUMBER
     if user_id in withdraw_states and withdraw_states[user_id].get('step') == 'number':
         if text.isdigit() and len(text) == 11:
             withdraw_states[user_id]['number'] = text
@@ -447,6 +482,7 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("Invalid number!", reply_markup=cancel_menu)
         return
     
+    # HANDLE AMOUNT
     if user_id in withdraw_states and withdraw_states[user_id].get('step') == 'amount':
         try:
             amount = float(text)
@@ -463,7 +499,10 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("Invalid amount!", reply_markup=cancel_menu)
         return
     
-    # LANGUAGE
+    # ============================================
+    # 7️⃣ LANGUAGE
+    # ============================================
+    
     if text == "🇬🇧 English":
         db.cursor.execute("UPDATE users SET language = 'en' WHERE telegram_id = ?", (user_id,))
         db.conn.commit()
@@ -476,14 +515,19 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("✅ বাংলা", reply_markup=main_menu)
         return
     
-    # UNKNOWN
+    # ============================================
+    # 8️⃣ UNKNOWN
+    # ============================================
+    
     await update.message.reply_text("❌ Unknown", reply_markup=main_menu)
 
-# ==================== MAIN ====================
+# ==================== PERSISTENT MENU ====================
 
 async def set_commands(app):
     commands = [BotCommand("start", "Start")]
     await app.bot.set_my_commands(commands)
+
+# ==================== MAIN ====================
 
 def main():
     app = Application.builder().token(TOKEN).build()
